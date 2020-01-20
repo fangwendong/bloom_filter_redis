@@ -90,18 +90,24 @@ func (r *RedisBitSet) BatchTest(keyOffsetsM map[string][]uint) (map[string]bool,
 func (r *RedisBitSet) getKeyOffset(offset uint) (string, uint) {
 	n := uint(offset / redisMaxLength) // n==0
 	thisOffset := offset - n*redisMaxLength
-	key := r.getKey()
+	key := r.getKey(thisOffset)
 	return key, thisOffset
 }
 
-func (r *RedisBitSet) getKey() string {
-	return fmt.Sprintf("%s:%d", r.keyPrefix, 0)
+func (r *RedisBitSet) getKey(thisOffset uint) string {
+	return fmt.Sprintf("%s:%d", r.keyPrefix, thisOffset)
 }
 
 func (r *RedisBitSet) Init() error {
-	_, err := r.client.SetBit(r.getKey(), int64(r.m)+1, 0).Result()
+	var offsetRedisMaxLength = int(r.m / redisMaxLength)
+	for i := 0; i <= offsetRedisMaxLength; i++ {
+		_, err := r.client.SetBit(r.getKey(0), int64(r.m)+1, 0).Result()
+		if err != nil {
+			return err
+		}
+	}
 
-	return err
+	return nil
 }
 
 type BloomFilter struct {
